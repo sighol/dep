@@ -1,6 +1,5 @@
 use anyhow::{bail, Context, Result};
 use clap::Parser;
-use serde::Deserialize;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -11,6 +10,9 @@ use serde_yaml::Value;
 
 mod dockerfile;
 use dockerfile::{DockerContainer, DockerFile};
+
+mod config;
+use config::DepConfig;
 
 const DOCKER_COMPOSE_PATH: &str = "docker-compose.yaml";
 const DEP_CONFIG_PATH: &str = "deployment.yaml";
@@ -43,16 +45,6 @@ fn git_version() -> Result<String> {
         .stdout;
     let version = String::from_utf8(version)?.trim().to_string();
     Ok(format!("{}-{}", date, version))
-}
-
-#[derive(Deserialize, Debug)]
-struct DepConfig {
-    server: String,
-    registry: String,
-    name: String,
-    #[serde(alias = "additionalFiles")]
-    additional_files: Option<Vec<PathBuf>>,
-    build: Option<String>,
 }
 
 #[derive(Debug)]
@@ -277,6 +269,8 @@ enum CliCommand {
     Version,
     /// Print the generated docker-compose file
     Compose,
+    // Interactive wizard to create a deployment.yaml file.
+    Init,
 }
 
 fn read_docker_compose() -> Result<Vec<DockerContainer>> {
@@ -299,12 +293,38 @@ fn read_dep() -> Result<DepConfig> {
     Ok(deserialized)
 }
 
+fn init() -> Result<()> {
+    let dep_path = Path::new(DEP_CONFIG_PATH);
+    if Path::exists(&dep_path) {
+        print!(
+            "{} already exists. Are you sure you want to overwrite it? (y/n) ",
+            DEP_CONFIG_PATH
+        );
+        std::io::stdout().flush()?;
+        let mut answer = String::new();
+        std::io::stdin().read_line(&mut answer)?;
+        answer = answer.trim_end().to_string();
+        if answer != "y" && answer != "yes" {
+            return Ok(());
+        }
+    }
+    let config = DepConfig::create_interactive();
+    let mut write_handle = File::create(dep_path)?;
+    serde_yaml::to_writer(&mut write_handle, &config)?;
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
     if let Some(dir) = &cli.directory {
         std::env::set_current_dir(dir)
             .context(format!("Failed to change directory to {}", dir.display()))?;
+    }
+
+    if let CliCommand::Init = &cli.command {
+        init()?;
+        std::process::exit(0);
     }
 
     let containers = read_docker_compose()?;
@@ -322,7 +342,8 @@ fn main() -> Result<()> {
             let output = build_context.transform_docker_compose()?;
             println!("{}", output);
         }
-        CliCommand::Deploy {} => build_context.deploy()?,
+        CliCommand::Deploy => build_context.deploy()?,
+        CliCommand::Init => {}
     }
 
     Ok(())
