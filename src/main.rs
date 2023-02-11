@@ -261,15 +261,15 @@ struct Cli {
 enum CliCommand {
     /// Build.
     Build,
-    /// Build, and push to the server, but don't deploy.
+    /// Build and push to the server.
     Push,
     /// Build, push, and deploy to the server.
     Deploy,
-    /// Display git version and exit.
+    /// Display git version.
     Version,
-    /// Print the generated docker-compose file
+    /// Display the generated docker-compose.yaml file.
     Compose,
-    // Interactive wizard to create a deployment.yaml file.
+    /// Interactive wizard to create a deployment.yaml file.
     Init,
 }
 

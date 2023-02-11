@@ -11,11 +11,30 @@ deployments will include some downtime.
 cargo install --git https://github.com/sighol/dep
 ```
 
-# Getting started
+# Usage
 
 Run `dep init` in a folder that contains `docker-compose.yaml` to create a
 `deployment.yaml` file. You can then run `dep deploy` to deploy your
 application.
+
+```
+Usage: dep [OPTIONS] <COMMAND>
+
+Commands:
+  build    Build
+  push     Build and push to the server
+  deploy   Build, push, and deploy to the server
+  version  Display git version
+  compose  Display the generated docker-compose.yaml file
+  init     Interactive wizard to create a deployment.yaml file
+  help     Print this message or the help of the given subcommand(s)
+
+Options:
+  -p, --pull                   Run docker image pull before building and deploying
+  -d, --directory <DIRECTORY>  Directory to change into before running the commands
+  -h, --help                   Print help
+  -V, --version                Print version
+```
 
 # Example
 
