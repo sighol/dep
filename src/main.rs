@@ -10,29 +10,10 @@ use std::time::Instant;
 use serde_yaml::Value;
 
 mod dockerfile;
-use dockerfile::DockerFile;
+use dockerfile::{DockerContainer, DockerFile};
 
-#[derive(Debug)]
-struct DockerContainer {
-    name: String,
-    build_dir: String,
-}
-
-impl DockerContainer {
-    fn from_docker_file(file: DockerFile) -> Vec<DockerContainer> {
-        let mut output = vec![];
-        for (service_name, service) in file.services.into_iter() {
-            if let Some(build_dir) = service.build {
-                output.push(DockerContainer {
-                    name: service_name,
-                    build_dir,
-                })
-            }
-        }
-        output.sort_by_key(|k| k.name.clone());
-        output
-    }
-}
+const DOCKER_COMPOSE_PATH: &str = "docker-compose.yaml";
+const DEP_CONFIG_PATH: &str = "deployment.yaml";
 
 fn header(msg: &str) {
     println!("\x1b[45;37;1m{}\x1b[0m", msg);
@@ -64,6 +45,16 @@ fn git_version() -> Result<String> {
     Ok(format!("{}-{}", date, version))
 }
 
+#[derive(Deserialize, Debug)]
+struct DepConfig {
+    server: String,
+    registry: String,
+    name: String,
+    #[serde(alias = "additionalFiles")]
+    additional_files: Option<Vec<PathBuf>>,
+    build: Option<String>,
+}
+
 #[derive(Debug)]
 struct BuildContext {
     registry: String,
@@ -90,7 +81,7 @@ impl BuildContext {
     }
 
     fn transform_docker_compose(&self) -> Result<String> {
-        let input_text = std::fs::read_to_string("docker-compose.yaml")?;
+        let input_text = std::fs::read_to_string(DOCKER_COMPOSE_PATH)?;
         let mut input: Value = serde_yaml::from_str(&input_text)?;
         let services = input
             .get_mut("services")
@@ -208,7 +199,7 @@ set -o pipefail";
         let tmp_dir = tempfile::tempdir()?;
         let compose_txt = self.transform_docker_compose()?;
         let mut tmp_file_path = tmp_dir.path().to_owned();
-        tmp_file_path.push("docker-compose.yaml");
+        tmp_file_path.push(DOCKER_COMPOSE_PATH);
         std::fs::write(tmp_file_path, compose_txt)?;
 
         // tmp_dir_path must have a trailing slash.
@@ -259,16 +250,6 @@ set -o pipefail";
     }
 }
 
-#[derive(Deserialize, Debug)]
-struct DepConfig {
-    server: String,
-    registry: String,
-    name: String,
-    #[serde(alias = "additionalFiles")]
-    additional_files: Option<Vec<PathBuf>>,
-    build: Option<String>,
-}
-
 #[derive(Parser)]
 #[command(author, version, about, long_about=None)]
 struct Cli {
@@ -299,20 +280,22 @@ enum CliCommand {
 }
 
 fn read_docker_compose() -> Result<Vec<DockerContainer>> {
-    let docker_path = Path::new("docker-compose.yaml");
-    let open = File::open(docker_path).context("Failed to open docker-compose.yaml")?;
+    let docker_path = Path::new(DOCKER_COMPOSE_PATH);
+    let open =
+        File::open(docker_path).context(format!("Failed to open {}", DOCKER_COMPOSE_PATH))?;
 
-    let docker_file: DockerFile =
-        serde_yaml::from_reader(open).context("Failed to parse docker-compose.yaml")?;
+    let docker_file: DockerFile = serde_yaml::from_reader(open)
+        .context(format!("Failed to parse {}", DOCKER_COMPOSE_PATH))?;
 
     Ok(DockerContainer::from_docker_file(docker_file))
 }
 
 fn read_dep() -> Result<DepConfig> {
-    let path = Path::new(".dep.yaml");
-    let open = File::open(path).context("Failde to open .dep.yaml")?;
-    let deserialized: DepConfig =
-        serde_yaml::from_reader(open).context("Failed to parse .dep.yaml")?;
+    let path = Path::new(DEP_CONFIG_PATH);
+    let open =
+        File::open(path).context(format!("Failed to open config file: {}", DEP_CONFIG_PATH))?;
+    let deserialized: DepConfig = serde_yaml::from_reader(open)
+        .context(format!("Failed to parse config file: {}", DEP_CONFIG_PATH))?;
     Ok(deserialized)
 }
 
@@ -320,7 +303,8 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     if let Some(dir) = &cli.directory {
-        std::env::set_current_dir(dir).context("Failed to change directory")?;
+        std::env::set_current_dir(dir)
+            .context(format!("Failed to change directory to {}", dir.display()))?;
     }
 
     let containers = read_docker_compose()?;
