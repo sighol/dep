@@ -60,7 +60,7 @@ deployment.yaml
 ```yaml
 name: example-service
 server: example.org
-registry: https://registry.example.org
+registry: registry.example.org
 additionalFiles: []
 build: ""
 ```
@@ -70,7 +70,7 @@ If you run `dep deploy`, it will
 - First run the contents of `build` as a bash script.
 - Then try to build all services in `docker-compose.yaml` that contains a `build: ` field.
   The services will be tagged with the registry, the service name, the date and git revision.
-  In the example above, it might build and tag `https://registry.example.org/example-service/web-server:2023-01-30-90348ce`.
+  In the example above, it might build and tag `registry.example.org/example-service/web-server:2023-01-30-90348ce`.
 - Create a temporary `docker-compose.yaml`file where the `build: .` fields have been replaced by the `image: TAG`.
 - rsync the generated `docker-compose.yaml` and any additional files listed in `additional_files`.
 - Push the generated images to the docker registry.
