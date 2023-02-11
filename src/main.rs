@@ -5,6 +5,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::time::Instant;
 
 use serde_yaml::Value;
 
@@ -35,6 +36,14 @@ impl DockerContainer {
 
 fn header(msg: &str) {
     println!("\x1b[45;37;1m{}\x1b[0m", msg);
+}
+
+fn header_elapsed(msg: &str, instant: &Instant) {
+    println!(
+        "\x1b[45;37;1m{} in {:.2} seconds\x1b[0m",
+        msg,
+        instant.elapsed().as_secs_f64()
+    );
 }
 
 fn git_version() -> Result<String> {
@@ -119,6 +128,7 @@ set -o errexit
 set -o nounset
 set -o pipefail";
         if let Some(build_script) = &self.config.build {
+            header("Running build script");
             let script = format!("{}\n{}", prefix, build_script);
             println!("Executing\x1b[48;2;10;10;10m\n{}\x1b[0m", script);
             let mut process = Command::new("bash").stdin(Stdio::piped()).spawn()?;
@@ -133,14 +143,17 @@ set -o pipefail";
 
     fn build_all(&self) -> Result<()> {
         self.run_build_script()?;
+        let start = Instant::now();
         for container in self.containers.iter() {
             self.build(container)?;
             println!();
         }
+        header_elapsed("Built all containers", &start);
         Ok(())
     }
 
     fn deploy(&self) -> Result<()> {
+        let start = Instant::now();
         self.push()?;
         header("Deploying");
         if self.pull {
@@ -159,13 +172,16 @@ set -o pipefail";
         if !status.success() {
             bail!("Failed to run docker compose up -d");
         }
+        header_elapsed("Deployed", &start);
 
         Ok(())
     }
 
     fn push(&self) -> Result<()> {
+        let start = Instant::now();
         self.push_containers()?;
         self.push_files()?;
+        header_elapsed("Pushed everything", &start);
         Ok(())
     }
 
