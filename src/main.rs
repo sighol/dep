@@ -262,7 +262,10 @@ enum CliCommand {
     /// Build.
     Build,
     /// Build and push to the server.
-    Push,
+    Push {
+        #[arg(short, long)]
+        no_docker: bool,
+    },
     /// Build, push, and deploy to the server.
     Deploy,
     /// Display git version.
@@ -337,7 +340,10 @@ fn main() -> Result<()> {
             println!("version: {}", git_version()?);
         }
         CliCommand::Build => build_context.build_all()?,
-        CliCommand::Push => build_context.push()?,
+        CliCommand::Push { no_docker } => match no_docker {
+            true => build_context.push_files()?,
+            false => build_context.push()?,
+        },
         CliCommand::Compose => {
             let output = build_context.transform_docker_compose()?;
             println!("{}", output);
