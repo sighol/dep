@@ -246,7 +246,7 @@ set -o pipefail";
 #[command(author, version, about, long_about=None)]
 struct Cli {
     /// Run docker image pull before building and deploying.
-    #[arg(short, long, value_name = "PULL")]
+    #[arg(global = true, short, long, value_name = "PULL")]
     pull: bool,
 
     /// Directory to change into before running the commands
