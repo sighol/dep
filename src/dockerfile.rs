@@ -9,13 +9,27 @@ pub struct DockerFile {
 
 #[derive(Deserialize, Debug)]
 pub struct DockerService {
-    pub build: Option<String>,
+    pub build: Option<DockerBuild>,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum DockerBuild {
+    Str(String),
+    Advanced(DockerBuildAdvanced),
+}
+
+#[derive(Deserialize, Debug)]
+pub struct DockerBuildAdvanced {
+    pub context: String,
+    pub dockerfile: String,
 }
 
 #[derive(Debug)]
 pub struct DockerContainer {
     pub name: String,
     pub build_dir: String,
+    pub dockerfile: Option<String>,
 }
 
 impl DockerContainer {
@@ -23,10 +37,19 @@ impl DockerContainer {
         let mut output = vec![];
         for (service_name, service) in file.services.into_iter() {
             if let Some(build_dir) = service.build {
-                output.push(DockerContainer {
-                    name: service_name,
-                    build_dir,
-                })
+                if let DockerBuild::Str(s) = build_dir {
+                    output.push(DockerContainer {
+                        name: service_name,
+                        build_dir: s,
+                        dockerfile: None,
+                    })
+                } else if let DockerBuild::Advanced(adv) = build_dir {
+                    output.push(DockerContainer {
+                        name: service_name,
+                        build_dir: adv.context,
+                        dockerfile: Some(adv.dockerfile),
+                    })
+                }
             }
         }
         output.sort_by_key(|k| k.name.clone());

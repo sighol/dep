@@ -82,7 +82,7 @@ impl BuildContext {
 
         for (service_name, service) in services.iter_mut() {
             let build = service.get("build");
-            if let Some(Value::String(_)) = build {
+            if let Some(_) = build {
                 if let Value::String(service_name) = service_name {
                     let service = service.as_mapping_mut().context("service is not a map")?;
                     let container: Vec<_> = self
@@ -228,6 +228,9 @@ set -o pipefail";
             builder.arg("--pull");
         }
         builder.arg(&container.build_dir);
+        if let Some(file) = &container.dockerfile {
+            builder.arg("-f").arg(file.to_string());
+        }
         builder.arg("-t").arg(self.image(container));
 
         let status = builder.status()?;
