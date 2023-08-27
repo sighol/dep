@@ -224,6 +224,7 @@ set -o pipefail";
         header(&format!("Building {}", self.image(container)));
         let mut builder = Command::new("docker");
         builder.arg("build");
+        builder.arg("--build-arg").arg(format!("VERSION={}", &self.version));
         if self.pull {
             builder.arg("--pull");
         }
