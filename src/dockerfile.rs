@@ -22,7 +22,8 @@ pub enum DockerBuild {
 #[derive(Deserialize, Debug)]
 pub struct DockerBuildAdvanced {
     pub context: String,
-    pub dockerfile: String,
+    pub dockerfile: Option<String>,
+    pub target: Option<String>,
 }
 
 #[derive(Debug)]
@@ -30,6 +31,7 @@ pub struct DockerContainer {
     pub name: String,
     pub build_dir: String,
     pub dockerfile: Option<String>,
+    pub target: Option<String>,
 }
 
 impl DockerContainer {
@@ -42,12 +44,14 @@ impl DockerContainer {
                         name: service_name,
                         build_dir: s,
                         dockerfile: None,
+                        target: None,
                     })
                 } else if let DockerBuild::Advanced(adv) = build_dir {
                     output.push(DockerContainer {
                         name: service_name,
                         build_dir: adv.context,
-                        dockerfile: Some(adv.dockerfile),
+                        dockerfile: adv.dockerfile,
+                        target: adv.target,
                     })
                 }
             }

@@ -232,6 +232,9 @@ set -o pipefail";
         if let Some(file) = &container.dockerfile {
             builder.arg("-f").arg(file.to_string());
         }
+        if let Some(target) = &container.target {
+            builder.arg("--target").arg(target);
+        }
         builder.arg("-t").arg(self.image(container));
 
         let status = builder.status()?;
