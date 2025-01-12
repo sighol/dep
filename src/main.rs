@@ -224,7 +224,9 @@ set -o pipefail";
         header(&format!("Building {}", self.image(container)));
         let mut builder = Command::new("docker");
         builder.arg("build");
-        builder.arg("--build-arg").arg(format!("VERSION={}", &self.version));
+        builder
+            .arg("--build-arg")
+            .arg(format!("VERSION={}", &self.version));
         if self.pull {
             builder.arg("--pull");
         }
@@ -255,6 +257,12 @@ struct Cli {
     /// Run docker image pull before building and deploying.
     #[arg(global = true, short, long, value_name = "PULL")]
     pull: bool,
+
+    #[arg(global = true, short, long, value_name = "server")]
+    server: Option<String>,
+
+    #[arg(global = true, short, long, value_name = "registry")]
+    registry: Option<String>,
 
     /// Directory to change into before running the commands
     #[arg(short, long)]
@@ -294,12 +302,19 @@ fn read_docker_compose() -> Result<Vec<DockerContainer>> {
     Ok(DockerContainer::from_docker_file(docker_file))
 }
 
-fn read_dep() -> Result<DepConfig> {
+fn read_dep(cli: &Cli) -> Result<DepConfig> {
     let path = Path::new(DEP_CONFIG_PATH);
     let open =
         File::open(path).context(format!("Failed to open config file: {}", DEP_CONFIG_PATH))?;
-    let deserialized: DepConfig = serde_yaml::from_reader(open)
+    let mut deserialized: DepConfig = serde_yaml::from_reader(open)
         .context(format!("Failed to parse config file: {}", DEP_CONFIG_PATH))?;
+    if let Some(registry) = &cli.registry {
+        deserialized.registry = registry.clone();
+    }
+    if let Some(server) = &cli.server {
+        deserialized.server = server.clone();
+    }
+
     Ok(deserialized)
 }
 
@@ -338,7 +353,7 @@ fn main() -> Result<()> {
     }
 
     let containers = read_docker_compose()?;
-    let dep = read_dep()?;
+    let dep = read_dep(&cli)?;
 
     let build_context = BuildContext::new(git_version()?, dep, cli.pull, containers);
 
