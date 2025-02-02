@@ -23,7 +23,7 @@ fn header(msg: &str) {
 
 fn header_elapsed(msg: &str, instant: &Instant) {
     println!(
-        "\x1b[45;37;1m{} in {:.2} seconds\x1b[0m",
+        "\x1b[106;37;1m{} in {:.2} seconds\x1b[0m",
         msg,
         instant.elapsed().as_secs_f64()
     );
@@ -138,7 +138,7 @@ set -o pipefail";
     fn deploy(&self) -> Result<()> {
         let start = Instant::now();
         self.push()?;
-        header("Deploying");
+        header(&format!("Deploying to {}", self.config.server));
         if self.pull {
             let status = Command::new("ssh")
                 .arg(&self.config.server)
@@ -247,7 +247,10 @@ set -o pipefail";
     }
 
     fn image(&self, c: &DockerContainer) -> String {
-        format!("{}/{}:{}", self.registry, c.name, self.version)
+        format!(
+            "{}/{}/{}:{}",
+            self.registry, self.config.name, c.name, self.version
+        )
     }
 }
 
