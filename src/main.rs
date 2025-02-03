@@ -160,6 +160,17 @@ set -o pipefail";
         Ok(())
     }
 
+    fn restart(&self) -> Result<()> {
+        let status = Command::new("ssh")
+            .arg(&self.config.server)
+            .arg(format!("cd {} && docker compose restart", self.config.name))
+            .status()?;
+        if !status.success() {
+            bail!("Failed to run docker compose restart")
+        }
+        Ok(())
+    }
+
     fn push(&self) -> Result<()> {
         let start = Instant::now();
         self.push_containers()?;
@@ -292,6 +303,8 @@ enum CliCommand {
     Compose,
     /// Interactive wizard to create a deployment.yaml file.
     Init,
+    /// Restarts all services
+    Restart,
 }
 
 fn read_docker_compose() -> Result<Vec<DockerContainer>> {
@@ -375,6 +388,7 @@ fn main() -> Result<()> {
         }
         CliCommand::Deploy => build_context.deploy()?,
         CliCommand::Init => {}
+        CliCommand::Restart => build_context.restart()?,
     }
 
     Ok(())
